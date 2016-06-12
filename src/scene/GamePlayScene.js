@@ -162,6 +162,7 @@ var GamePlayLayer = cc.Layer.extend({
                     Game.user.coffee -= elapsed;
 
                 Game.user.heroSpeed -= (Game.user.heroSpeed - GameConstants.HERO_MIN_SPEED) * 0.01;
+                Game.user.distance += (Game.user.heroSpeed * elapsed) * 0.1;
 
                 this.changeHeroPose();
                 this.ui.update();
@@ -201,9 +202,9 @@ var GamePlayLayer = cc.Layer.extend({
             this._coffeeEffect.y = this.hero.y;
         }
         this.foodmanager.update(this.hero, elapsed);
-        this._obstacleManager.update(this.hero, elapsed);  //ÕÏ°­Îï
+        this._obstacleManager.update(this.hero, elapsed);  //éšœç¢ç‰©
     },
-    //¸Ä±äÓ¢ĞÛµÄ×ËÌ¬£¨ÉÏÇÌ»òÏÂÇÌ»òÕß²»±ä£©
+    //æ”¹å˜è‹±é›„çš„å§¿æ€ï¼ˆä¸Šç¿˜æˆ–ä¸‹ç¿˜æˆ–è€…ä¸å˜ï¼‰
     changeHeroPose:function(){
         var winSize = cc.winSize;
         if (Math.abs(-(this.hero.y - this._touchY) * 0.2 < 30))
@@ -292,7 +293,7 @@ var GamePlayLayer = cc.Layer.extend({
     },
 
     /**
-     * hero±»Åö×²N´Îºó£¬½áÊøÓÎÏ·£»½áÊøÖ®Ç°£¬ÏÈ²¥·ÅheroµôÂäµÄ¶¯»­
+     * heroè¢«ç¢°æ’Næ¬¡åï¼Œç»“æŸæ¸¸æˆï¼›ç»“æŸä¹‹å‰ï¼Œå…ˆæ’­æ”¾heroæ‰è½çš„åŠ¨ç”»
      */
     endGame:function(){
         this.x = 0;
