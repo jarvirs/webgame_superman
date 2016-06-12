@@ -18,6 +18,7 @@
         "src/component/SoundButton.js",
         "src/GameConstants.js",
         "src/scene/GameBackground.js",
+        "src/scene/GameOverUI.js",
         "src/scene/GamePlayScene.js",
         "src/entity/Hero.js",
         "src/entity/Game.js",

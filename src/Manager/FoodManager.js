@@ -48,7 +48,6 @@ var FoodManager = cc.Class.extend({
         this.removeAll();
         Game.user.coffer = Game.user.mushroom = 0;
 
-        //初始化食物的属性
         this._pattern = 1;
         this._patternPosY = cc.director.getWinSize().height - GameConstants.GAME_AREA_TOP_BOTTOM;
         this._patternStep = 15;

@@ -12,6 +12,8 @@ var GamePlayLayer = cc.Layer.extend({
     _coffeeEffect:null,
     _mushroomEffect:null,
     _windEffect:null,
+    _gameOverUI:null,
+    _cameraShake:0,
 
     ctor: function () {
         this._super();
@@ -44,6 +46,9 @@ var GamePlayLayer = cc.Layer.extend({
         Sound.stop();
         Sound.playGameBgMusic();
 
+        if(this._gameOverUI)
+            this._gameOverUI.setVisible(false);
+
         this.stopCoffeeEffect();
         this.stopMushroomEffect();
 
@@ -60,13 +65,11 @@ var GamePlayLayer = cc.Layer.extend({
                 event: cc.EventListener.TOUCH_ALL_AT_ONCE,
                 onTouchesMoved: this._onTouchMoved.bind(this)
 
-
             }, this);
         else
             cc.eventManager.addListener({
                 event: cc.EventListener.MOUSE,
                 onMouseMove: this._onMouseMove.bind(this)
-
 
             }, this);
 
@@ -97,7 +100,7 @@ var GamePlayLayer = cc.Layer.extend({
                     Game.gameState = GameConstants.GAME_STATE_FLYING;
                     this.hero.state = GameConstants.HERO_STATE_FLYING;
                 }
-                // this._ui.update();
+                 this.ui.update();
                 // this._handleHeroPose();
                 break;
             }
@@ -108,10 +111,46 @@ var GamePlayLayer = cc.Layer.extend({
                 else
                     this.stopCoffeeEffect();
 
-                this.hero.y -= (this.hero.y - this._touchY) * 0.1;
-                Game.user.heroSpeed -= (Game.user.heroSpeed - GameConstants.HERO_MIN_SPEED) * 0.01;
-                this.bg.speed = Game.user.heroSpeed * elapsed;
-                Game.user.distance += (Game.user.heroSpeed * elapsed) * 0.1;
+                if (Game.user.hitObstacle <= 0) {
+                    this.hero.y -= (this.hero.y - this._touchY) * 0.1;
+
+                    if (Game.user.heroSpeed > GameConstants.HERO_MIN_SPEED + 100) {
+                        this.showWindEffect();
+                        // Animate this.hero faster.
+                        this.hero.toggleSpeed(true);
+                    }
+                    else {
+                        // Animate this.hero normally.
+                        this.hero.toggleSpeed(false);
+                        this.stopWindEffect();
+                    }
+                    this.changeHeroPose();
+
+                } else {
+                    // Hit by obstacle
+                    if (Game.user.coffee <= 0) {
+                        // Play this.hero animation for obstacle hit.
+                        if (this.hero.state != GameConstants.HERO_STATE_HIT) {
+                            this.hero.state = GameConstants.HERO_STATE_HIT;
+                        }
+
+                        // Move hero to center of the screen.
+                        this.hero.y -= (this.hero.y - winSize.height / 2) * 0.1;
+
+                        // Spin the this.hero.
+                        if (this.hero.y > winSize.height * 0.5)
+                            this.hero.rotation -= Game.user.hitObstacle * 2;
+                        else
+                            this.hero.rotation += Game.user.hitObstacle * 2;
+                    }
+
+                    // If hit by an obstacle.
+                    Game.user.hitObstacle--;
+
+                    // Camera shake.
+                    this._cameraShake = Game.user.hitObstacle;
+                    this._shakeAnimation();
+                }
 
                 // If we have a mushroom, reduce the value of the power.
                 if (Game.user.mushroom > 0)
@@ -119,7 +158,6 @@ var GamePlayLayer = cc.Layer.extend({
                 else
                     this.stopMushroomEffect();
 
-                // If we have a coffee, reduce the value of the power.
                 if (Game.user.coffee > 0)
                     Game.user.coffee -= elapsed;
 
@@ -129,6 +167,29 @@ var GamePlayLayer = cc.Layer.extend({
                 this.ui.update();
                 break;
             }
+            case GameConstants.GAME_STATE_OVER:
+                this.foodmanager.removeAll();
+                this._obstacleManager.removeAll();
+
+                this.hero.setRotation(30);
+
+                if (this.hero.y > -this.hero.height/2)
+                {
+                    Game.user.heroSpeed -= Game.user.heroSpeed * elapsed;
+                    this.hero.y -= winSize.height * elapsed;
+                }
+                else
+                {
+                    // Once he moves out, reset speed to 0.
+                    Game.user.heroSpeed = 0;
+
+                    this.unscheduleUpdate();
+
+                    this._gameOver();
+                }
+                // Set the background's speed based on hero's speed.
+                this.bg.speed = Game.user.heroSpeed * elapsed;
+                break;
         }
 
         if(this._mushroomEffect) {
@@ -140,7 +201,7 @@ var GamePlayLayer = cc.Layer.extend({
             this._coffeeEffect.y = this.hero.y;
         }
         this.foodmanager.update(this.hero, elapsed);
-       // this._obstacleManager.update(this.hero, elapsed);  障碍物
+        this._obstacleManager.update(this.hero, elapsed);  //障碍物
     },
     //改变英雄的姿态（上翘或下翘或者不变）
     changeHeroPose:function(){
@@ -155,6 +216,36 @@ var GamePlayLayer = cc.Layer.extend({
         if (this.hero.y > winSize.height - this.hero.height * 0.5) {
             this.hero.y = winSize.height - this.hero.height * 0.5;
             this.hero.setRotation(0);
+        }
+    },
+    _shakeAnimation:function() {
+        // Animate quake effect, shaking the camera a little to the sides and up and down.
+        if (this._cameraShake > 0){
+            this._cameraShake -= 0.1;
+            this.x = parseInt(Math.random() * this._cameraShake - this._cameraShake * 0.5);
+            this.y = parseInt(Math.random() * this._cameraShake - this._cameraShake * 0.5);
+        } else if (this.x != 0) {
+            // If the shake value is 0, reset the stage back to normal. Reset to initial position.
+            this.x = 0;
+            this.y = 0;
+        }
+    },
+
+    showWindEffect:function() {
+        if(this._windEffect)
+            return;
+        this._windEffect = new cc.ParticleSystem("res/particles/wind.plist");
+        this._windEffect.x = cc.director.getWinSize().width;
+        this._windEffect.y = cc.director.getWinSize().height/2;
+        this._windEffect.setScaleX(100);
+        this.addChild(this._windEffect);
+    },
+
+    stopWindEffect:function() {
+        if(this._windEffect){
+            this._windEffect.stopSystem();
+            this.removeChild(this._windEffect);
+            this._windEffect = null;
         }
     },
 
@@ -199,6 +290,24 @@ var GamePlayLayer = cc.Layer.extend({
         eat.y = itemY;
         this.addChild(eat);
     },
+
+    /**
+     * hero被碰撞N次后，结束游戏；结束之前，先播放hero掉落的动画
+     */
+    endGame:function(){
+        this.x = 0;
+        this.y = 0;
+        Game.gameState = GameConstants.GAME_STATE_OVER;
+    },
+
+    _gameOver:function(){
+        if(!this._gameOverUI){
+            this._gameOverUI = new GameOverUI(this);
+            this.addChild(this._gameOverUI);
+        }
+        this._gameOverUI.setVisible(true);
+        this._gameOverUI.init();
+    }
 
 });
 

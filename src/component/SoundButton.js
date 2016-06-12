@@ -16,5 +16,7 @@ var SoundButton=cc.MenuItemToggle.extend({
         this._super(new cc.MenuItemSprite(sprite,null,null),new cc.MenuItemImage("#soundOff.png"));
         this.setCallback(this._soundOnOff,this);
     },
-    _soundOnOff:function(){}
+    _soundOnOff:function(){
+        Sound.toggleOnOff();
+    }
 })
